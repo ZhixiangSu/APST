@@ -290,41 +290,48 @@ def load_paths(relation_dir,head_dir,data_size,max_path_num,mode):
 
             p = [rv for r in zip(entities, relations) for rv in r]
             p.append(entities[-1])
-            paths[-1].append(p)
-        for i in range(pnum1,max_path_num):
-            paths[-1].append(["nopath"])
+            paths[-1].append(['path',p])
+        # for i in range(pnum1,max_path_num):
+        #     paths[-1].append(["nopath"])
+
     return paths
 
-# def load_rules(relation_dir,head_dir,data_size,max_path_num):
-#     paths = []
-#     f1 = open(relation_dir, encoding='utf-8')
-#     f2 = open(head_dir, encoding='utf-8')
-#     for i in range(data_size):
-#         pnum1=int(f1.readline())
-#         pnum2=int(f2.readline())
-#         assert pnum1==pnum2
-#         paths.append([])
-#         for j in range(pnum1):
-#             relations=f1.readline().rstrip('\t\n').split("\t")
-#             heads=f2.readline().rstrip('\t\n').split("\t")
-#             head=heads[0]
-#             if j>=max_path_num:
-#                 continue
-#             p=[head,relations]
-#             paths[-1].append(p)
-#         # for i in range(pnum1,max_path_num):
-#         #     paths[-1].append(["nodesc",["nopath"]])
-#     return paths
-# def merge_rules_and_paths(paths,rules,neg_num,max_path_num):
-#     merged = copy.deepcopy(paths)
-#     # for i, p in enumerate(paths):
-#     #     for j in range(0, min(max_path_num - len(p), len(rules[i]))):
-#     #         merged[i].append(rules[i][j])
-#     for m in merged:
-#         for i in range(len(m),max_path_num):
-#             m.append(["nopath"])
-#     return merged
-def reshape_relation_prediction_ranking_data(ranking_triplets,ranking_paths,neg_size,all_dict):
+def load_rules(relation_dir,head_dir,data_size,max_path_num,triplets):
+    paths = []
+    f1 = open(relation_dir, encoding='utf-8')
+    f2 = open(head_dir, encoding='utf-8')
+    for i in range(data_size):
+        pnum1=int(f1.readline())
+        pnum2=int(f2.readline())
+        assert pnum1==pnum2
+        paths.append([])
+        for j in range(pnum1):
+            relations=f1.readline().rstrip('\t\n').split("\t")
+            heads=f2.readline().rstrip('\t\n').split("\t")
+            head=heads[0]
+            if j>=max_path_num:
+                continue
+            p=[head]+relations[1:]
+            p.append(triplets[i][-1])
+            paths[-1].append(['rule',p])
+        # for i in range(pnum1,max_path_num):
+        #     paths[-1].append(["nodesc",["nopath"]])
+    return paths
+def merge_rules_and_paths(no_merge,paths,rules,neg_num,max_path_num):
+    merged = copy.deepcopy(paths)
+    # for i, p in enumerate(paths):
+    #     for j in range(0, min(max_path_num - len(p), len(rules[i]))):
+    #         merged[i].append(rules[i][j])
+    if no_merge==False:
+        for i, p in enumerate(paths):
+            if len(p)==0:
+                for r in rules[i]:
+                    merged[i].append(r)
+    for m in merged:
+        for i in range(len(m),max_path_num):
+            m.append(["nopath"])
+    return merged
+def reshape_relation_prediction_ranking_data(ranking_triplets,ranking_paths,neg_size,all_dict,text):
     reshaped_triplets=[]
     reshaped_paths=[]
     labels=[]
@@ -344,9 +351,32 @@ def reshape_relation_prediction_ranking_data(ranking_triplets,ranking_paths,neg_
         labels.append(label)
         index=np.argsort(inverse_index)
         indexes.append(index)
-    # reshaped_triplets = [[f'{all_dict[st1[1]]} [SEP] {all_dict[st1[0]]} [SEP] {all_dict[st1[2]]}' for st1 in st2] for st2 in reshaped_triplets]
-    # reshaped_paths = [[[f'{"; ".join([all_dict[r] for r in st[1]])} [SEP] {all_dict[st[0]]} [SEP] {all_dict[st[2]]}' for st in st1] for st1 in st2] for st2 in reshaped_paths]
-    return reshaped_triplets,reshaped_paths,labels,indexes
+    reshaped_triplet_sentences=[]
+    for triplets in reshaped_triplets:
+        reshaped_triplet_sentences.append([])
+        for t in triplets:
+            reshaped_triplet_sentences[-1].append(
+                f'{text["entity"][t[0]]}: {text["entitylong"][t[0]]} [SEP] {text["relation"][t[1]]} [SEP] {text["entity"][t[2]]}: {text["entitylong"][t[2]]} [SEP]'
+            )
+    reshaped_path_sentences = []
+    for paths in reshaped_paths:
+        reshaped_path_sentences.append([])
+        for path in paths:
+            reshaped_path_sentences[-1].append([])
+            for p in path:
+                if p[0]=='path':
+                    reshaped_path_sentences[-1][-1].append(
+                        f'{text["entity"][p[1][0]]}: {text["entitylong"][p[1][0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in p[1][1:-1]])} [SEP] {text["entity"][p[1][-1]]}:{text["entitylong"][p[1][-1]]} [SEP]'
+                    )
+                elif p[0]=='rule':
+                    reshaped_path_sentences[-1][-1].append(
+                        f'{text["entity"][p[1][0]]}: {text["entitylong"][p[1][0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in p[1][1:-1]])} [SEP] {text["entity"][p[1][-1]]}:{text["entitylong"][p[1][-1]]} [SEP]'
+                    )
+                elif p[0]=='nopath':
+                    reshaped_path_sentences[-1][-1].append('')
+                else:
+                    raise NotImplementedError
+    return reshaped_triplet_sentences,reshaped_path_sentences,labels,indexes
 
 def myConvert(data):
     for i in range(len(data[0])):

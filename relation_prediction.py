@@ -9,7 +9,7 @@ from colorama import Fore
 import os
 import random
 from utils import load_count_dict, load_cycle, negative_relation_sampling, load_text, load_paths, load_triplets_with_pos_tails, \
-    myConvert,reshape_relation_prediction_ranking_data,element_wise_cos,cal_metrics,CosineEmbeddingLoss
+    myConvert,reshape_relation_prediction_ranking_data,element_wise_cos,cal_metrics,CosineEmbeddingLoss,load_rules, merge_rules_and_paths
 from torch.cuda.amp import GradScaler, autocast
 from transformers import set_seed
 from models import SentenceTransformer
@@ -26,7 +26,7 @@ parser.add_argument('--epochs', type=int, default=30,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=1, metavar='N',
                     help='batch size')
-parser.add_argument('--dataset', type=str, default='FB15k-237-subset',
+parser.add_argument('--dataset', type=str, default='NELL-995-subset',
                     help='name of the dataset')
 parser.add_argument('--path_dir', type=str, default=None,
                     help='location of extracted paths for each triplet')
@@ -60,15 +60,17 @@ parser.add_argument('--seed', type=int, default=42,
                     help='random seed')
 parser.add_argument('--suffix', type=str, default="_full",
                     help='suffix of the train file name')
-parser.add_argument('--do_train',action='store_true', default=True,
+parser.add_argument('--no_train',action='store_true', default=False,
                     help='whether train or not')
-parser.add_argument('--do_test',action='store_true', default=True,
+parser.add_argument('--no_test',action='store_true', default=False,
                     help='whether test or not')
 parser.add_argument('--output_dir', type=str, default=None,
                     help='location to output test results')
 parser.add_argument('--text_file', type=str, default='GoogleWikipedia',
                     help='long text to be loaded')
-parser.add_argument('--text_length', type=int, default=0,
+parser.add_argument('--text_length', type=int, default=256,
+                    help='long text length')
+parser.add_argument('--no_merge', action='store_true', default=False,
                     help='long text length')
 args = parser.parse_args()
 
@@ -114,16 +116,16 @@ ranking_triplets = load_triplets_with_pos_tails(os.path.join(path_dir, "ranking_
 ranking_paths = load_paths(os.path.join(path_dir, "relation_paths_test.txt"),
                         os.path.join(path_dir, "entity_paths_test.txt"), len(ranking_triplets),args.max_path_num,args.mode)
 
-# train_rules = load_rules(os.path.join(path_dir, "relation_rules_train.txt"),
-#                          os.path.join(path_dir, "rules_heads_train.txt"), len(train_triplets),args.max_path_num)
-# valid_rules = load_rules(os.path.join(path_dir, "relation_rules_valid.txt"),
-#                          os.path.join(path_dir, "rules_heads_valid.txt"), len(valid_triplets),args.max_path_num)
-# ranking_rules = load_rules(os.path.join(path_dir, "relation_rules_test.txt"),
-#                         os.path.join(path_dir, "rules_heads_test.txt"), len(ranking_triplets),args.max_path_num)
+train_rules = load_rules(os.path.join(path_dir, "relation_rules_train.txt"),
+                         os.path.join(path_dir, "rules_heads_train.txt"), len(train_triplets),args.max_path_num,train_triplets)
+valid_rules = load_rules(os.path.join(path_dir, "relation_rules_valid.txt"),
+                         os.path.join(path_dir, "rules_heads_valid.txt"), len(valid_triplets),args.max_path_num,valid_triplets)
+ranking_rules = load_rules(os.path.join(path_dir, "relation_rules_test.txt"),
+                        os.path.join(path_dir, "rules_heads_test.txt"), len(ranking_triplets),args.max_path_num,ranking_triplets)
 
-# train_merged=merge_rules_and_paths(train_paths,train_rules,args.neg_sample_num_train,args.max_path_num)
-# valid_merged=merge_rules_and_paths(valid_paths,valid_rules,args.neg_sample_num_valid,args.max_path_num)
-# ranking_merged=merge_rules_and_paths(ranking_paths,ranking_rules,args.neg_sample_num_test,args.max_path_num)
+train_merged=merge_rules_and_paths(args.no_merge,train_paths,train_rules,args.neg_sample_num_train,args.max_path_num)
+valid_merged=merge_rules_and_paths(args.no_merge,valid_paths,valid_rules,args.neg_sample_num_valid,args.max_path_num)
+ranking_merged=merge_rules_and_paths(args.no_merge,ranking_paths,ranking_rules,args.neg_sample_num_test,args.max_path_num)
 
 text,relation_texts = load_text(text_dir,args.text_file,args.text_length)
 all_dict = {**text['entity'], **text['relation']}
@@ -131,15 +133,15 @@ all_dict = {**text['entity'], **text['relation']}
 valid_pos_tails=[all_pos_tails[t[0]][t[1]] for t in valid_triplets[::args.neg_sample_num_valid]]
 ranking_pos_tails=[all_pos_tails[t[0]][t[1]] for t in ranking_triplets[::args.neg_sample_num_test]]
 
-train_triplets,train_paths,train_labels,_=reshape_relation_prediction_ranking_data(train_triplets,train_paths,args.neg_sample_num_train,all_dict)
-valid_triplets,valid_paths,valid_labels,_=reshape_relation_prediction_ranking_data(valid_triplets,valid_paths,args.neg_sample_num_valid,all_dict)
-ranking_triplets,ranking_paths,ranking_labels,ranking_indexes=reshape_relation_prediction_ranking_data(ranking_triplets,ranking_paths,args.neg_sample_num_test,all_dict)
+train_triplets,train_merged,train_labels,_=reshape_relation_prediction_ranking_data(train_triplets,train_merged,args.neg_sample_num_train,all_dict,text)
+valid_triplets,valid_merged,valid_labels,_=reshape_relation_prediction_ranking_data(valid_triplets,valid_merged,args.neg_sample_num_valid,all_dict,text)
+ranking_triplets,ranking_merged,ranking_labels,ranking_indexes=reshape_relation_prediction_ranking_data(ranking_triplets,ranking_merged,args.neg_sample_num_test,all_dict,text)
 
 
 
 
-train_data = list(zip(train_triplets, train_paths,train_labels))
-valid_data = list(zip(valid_triplets, valid_paths,valid_labels,valid_pos_tails))
+train_data = list(zip(train_triplets, train_merged,train_labels))
+valid_data = list(zip(valid_triplets, valid_merged,valid_labels,valid_pos_tails))
 if args.train_sample_num==-1:
     train_sampler = RandomSampler(train_data)
 else:
@@ -152,7 +154,7 @@ else:
     valid_sampler = RandomSampler(valid_data,replacement=True,num_samples=args.valid_sample_num)
 valid_data_loader = DataLoader(valid_data, sampler=valid_sampler, batch_size=args.batch_size, collate_fn=myConvert)
 
-ranking_data = list(zip(ranking_triplets, ranking_paths,ranking_labels,ranking_pos_tails))
+ranking_data = list(zip(ranking_triplets, ranking_merged,ranking_labels,ranking_pos_tails))
 ranking_sampler = SequentialSampler(ranking_data)
 ranking_data_loader = DataLoader(ranking_data, sampler=ranking_sampler, batch_size=args.batch_size, collate_fn=myConvert)
 
@@ -200,14 +202,7 @@ def train():
             # sentence2 = [
             #     [[f'{"; ".join([all_dict[r] for r in st[1]])} ; {all_dict[st[0]]} ; {all_dict[st[2]]} [SEP]' for st in st1]
             #      for st1 in st2] for st2 in sentence2]
-            sentence1 = [
-                [
-                    f'{text["entity"][st1[0]]}: {text["entitylong"][st1[0]]} [SEP] {text["relation"][st1[1]]} [SEP] {text["entity"][st1[2]]}: {text["entitylong"][st1[2]]} [SEP]'
-                    for st1 in st2] for st2 in sentence1]
-            sentence2 = [[[
-                              f'{text["entity"][s[0]]}: {text["entitylong"][s[0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in s[1:-1]])} [SEP] {text["entity"][s[-1]]}:{text["entitylong"][s[-1]]} [SEP]'
-                              for s in st] for
-                          st in st2] for st2 in sentence2]
+
             targets = torch.tensor(targets).to(device)
             optimizer.zero_grad()
             outputs = []
@@ -259,14 +254,14 @@ def validate():
         # sentence2 = [[["; ".join([all_dict[er] for er in s]) + " [SEP]" for s in st] for st in st2] for st2 in
         #              sentence2]
 
-        sentence1 = [
-            [
-                f'{text["entity"][st1[0]]}: {text["entitylong"][st1[0]]} [SEP] {text["relation"][st1[1]]} [SEP] {text["entity"][st1[2]]}: {text["entitylong"][st1[2]]} [SEP]'
-                for st1 in st2] for st2 in sentence1]
-        sentence2 = [[[
-                          f'{text["entity"][s[0]]}: {text["entitylong"][s[0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in s[1:-1]])} [SEP] {text["entity"][s[-1]]}:{text["entitylong"][s[-1]]} [SEP]'
-                          for s in st] for
-                      st in st2] for st2 in sentence2]
+        # sentence1 = [
+        #     [
+        #         f'{text["entity"][st1[0]]}: {text["entitylong"][st1[0]]} [SEP] {text["relation"][st1[1]]} [SEP] {text["entity"][st1[2]]}: {text["entitylong"][st1[2]]} [SEP]'
+        #         for st1 in st2] for st2 in sentence1]
+        # sentence2 = [[[
+        #                   f'{text["entity"][s[0]]}: {text["entitylong"][s[0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in s[1:-1]])} [SEP] {text["entity"][s[-1]]}:{text["entitylong"][s[-1]]} [SEP]'
+        #                   for s in st] for
+        #               st in st2] for st2 in sentence2]
 
         targets = torch.tensor(targets).to(device)
         optimizer.zero_grad()
@@ -313,11 +308,11 @@ def test():
         #     [[f'{"; ".join([all_dict[r] for r in st[1]])} ; {all_dict[st[0]]} ; {all_dict[st[2]]} [SEP]' for st in st1]
         #      for st1 in st2] for st2 in sentence2]
 
-        sentence1 = [
-            [f'{text["entity"][st1[0]]}: {text["entitylong"][st1[0]]} [SEP] {text["relation"][st1[1]]} [SEP] {text["entity"][st1[2]]}: {text["entitylong"][st1[2]]} [SEP]'
-             for st1 in st2] for st2 in sentence1]
-        sentence2 = [[[f'{text["entity"][s[0]]}: {text["entitylong"][s[0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in s[1:-1]])} [SEP] {text["entity"][s[-1]]}:{text["entitylong"][s[-1]]} [SEP]' for s in st] for
-                      st in st2] for st2 in sentence2]
+        # sentence1 = [
+        #     [f'{text["entity"][st1[0]]}: {text["entitylong"][st1[0]]} [SEP] {text["relation"][st1[1]]} [SEP] {text["entity"][st1[2]]}: {text["entitylong"][st1[2]]} [SEP]'
+        #      for st1 in st2] for st2 in sentence1]
+        # sentence2 = [[[f'{text["entity"][s[0]]}: {text["entitylong"][s[0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in s[1:-1]])} [SEP] {text["entity"][s[-1]]}:{text["entitylong"][s[-1]]} [SEP]' for s in st] for
+        #               st in st2] for st2 in sentence2]
 
         targets = torch.tensor(targets).to(device)
         optimizer.zero_grad()
@@ -347,26 +342,27 @@ def test():
     ordered_positions=np.argsort(-ordered_scores, axis=1)
     false_predicted_triplets=[]
     false_positions=[]
+    metrics = metrics / nb_ranking_steps
+    ranking_pbar.close()
+    print(f"MR: {metrics[0]}, MRR: {metrics[1]}, Hit@1: {metrics[2]}, Hit@3: {metrics[3]}, Hit@10: {metrics[4]}")
     for i in range(len(ordered_positions)):
         if ordered_positions[i][0]!=0:
             false_predicted_triplets.append(ranking_triplets[i][ranking_labels[i]])
             false_positions.append(ordered_positions[i])
     false_positions=np.array(false_positions)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     np.savetxt(os.path.join(output_dir,"false_positions.txt"), false_positions,fmt="%d", delimiter="\t")
 
     with open(os.path.join(output_dir,"false_triplets.txt"),'w') as f:
         for triplet in false_predicted_triplets:
             f.write("\t".join(triplet)+"\n")
         f.close()
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
     np.savetxt(os.path.join(output_dir,"indexes.txt"),ordered_positions,fmt="%d", delimiter="\t")
     np.savetxt(os.path.join(output_dir,"scores.txt"), ordered_scores,fmt="%.5f", delimiter="\t")
-    metrics=metrics/nb_ranking_steps
-    ranking_pbar.close()
-    print(f"MR: {metrics[0]}, MRR: {metrics[1]}, Hit@1: {metrics[2]}, Hit@3: {metrics[3]}, Hit@10: {metrics[4]}")
 
-if args.do_train:
+
+if args.no_train is False:
     try:
         test()
         train()
@@ -374,7 +370,7 @@ if args.do_train:
         print("Receive keyboard interrupt, start testing:")
         model.load_state_dict(torch.load(model_load_file, map_location=device))
         test()
-if args.do_test:
+if args.no_test is False:
     # model=torch.nn.DataParallel(model,device_ids=[0,1])
     model.load_state_dict(torch.load(model_load_file, map_location=device))
     test()

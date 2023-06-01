@@ -16,7 +16,7 @@ import pickle
 
 
 
-parser = argparse.ArgumentParser(description='Path Finding for Relation Prediction')
+parser = argparse.ArgumentParser(description='Rule Finding for Relation Prediction')
 parser.add_argument('--dataset', type=str, default='FB15k-237-subset',
                     help='name of the dataset')
 parser.add_argument('--suffix', type=str, default='_full',
@@ -76,7 +76,6 @@ relation_sparse_matrix = defaultdict(lambda: {'v': defaultdict(lambda: defaultdi
 with open(os.path.join(data_dir, graph), encoding='utf-8') as f:
     for line in f:
         h, r, t = line.split()
-        train_triplets.append([h, r, t])
         G_all.add_edge(h, t, relation=r)
         G_all.add_edge(t, h, relation=str("{" + r + "}^-1"))
         G[r].add_edge(h, t)

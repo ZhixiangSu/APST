@@ -26,7 +26,7 @@ parser.add_argument('--epochs', type=int, default=30,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=1, metavar='N',
                     help='batch size')
-parser.add_argument('--dataset', type=str, default='NELL-995-subset',
+parser.add_argument('--dataset', type=str, default='FB15k-237-subset',
                     help='name of the dataset')
 parser.add_argument('--path_dir', type=str, default=None,
                     help='location of extracted paths for each triplet')
@@ -54,7 +54,7 @@ parser.add_argument('--neg_sample_num_valid', type=int, default=5,
                     help='number of negative validating samples')
 parser.add_argument('--neg_sample_num_test', type=int, default=50,
                     help='number of negative testing samples')
-parser.add_argument('--mode', type=str, default='head',
+parser.add_argument('--mode', type=str, default='tail',
                     help='whether head or tail is fixed')
 parser.add_argument('--seed', type=int, default=42,
                     help='random seed')
@@ -117,11 +117,11 @@ ranking_paths = load_paths(os.path.join(path_dir, "relation_paths_test.txt"),
                         os.path.join(path_dir, "entity_paths_test.txt"), len(ranking_triplets),args.max_path_num,args.mode)
 
 train_rules = load_rules(os.path.join(path_dir, "relation_rules_train.txt"),
-                         os.path.join(path_dir, "rules_heads_train.txt"), len(train_triplets),args.max_path_num,train_triplets)
+                         os.path.join(path_dir, "rules_heads_train.txt"), len(train_triplets),args.max_path_num,train_triplets,args.mode)
 valid_rules = load_rules(os.path.join(path_dir, "relation_rules_valid.txt"),
-                         os.path.join(path_dir, "rules_heads_valid.txt"), len(valid_triplets),args.max_path_num,valid_triplets)
+                         os.path.join(path_dir, "rules_heads_valid.txt"), len(valid_triplets),args.max_path_num,valid_triplets,args.mode)
 ranking_rules = load_rules(os.path.join(path_dir, "relation_rules_test.txt"),
-                        os.path.join(path_dir, "rules_heads_test.txt"), len(ranking_triplets),args.max_path_num,ranking_triplets)
+                        os.path.join(path_dir, "rules_heads_test.txt"), len(ranking_triplets),args.max_path_num,ranking_triplets,args.mode)
 
 train_merged=merge_rules_and_paths(args.no_merge,train_paths,train_rules,args.neg_sample_num_train,args.max_path_num)
 valid_merged=merge_rules_and_paths(args.no_merge,valid_paths,valid_rules,args.neg_sample_num_valid,args.max_path_num)

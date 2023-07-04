@@ -296,7 +296,7 @@ def load_paths(relation_dir,head_dir,data_size,max_path_num,mode):
 
     return paths
 
-def load_rules(relation_dir,head_dir,data_size,max_path_num,triplets):
+def load_rules(relation_dir,head_dir,data_size,max_path_num,triplets,mode):
     paths = []
     f1 = open(relation_dir, encoding='utf-8')
     f2 = open(head_dir, encoding='utf-8')
@@ -311,8 +311,10 @@ def load_rules(relation_dir,head_dir,data_size,max_path_num,triplets):
             head=heads[0]
             if j>=max_path_num:
                 continue
-            p=[head]+relations[1:]
-            p.append(triplets[i][-1])
+            if mode=='head':
+                p=[head]+relations[1:]+ [triplets[i][-1]]
+            else:
+                p = [triplets[i][0]] + [inverse_relation(r) for r in reversed(relations[1:])] + [head]
             paths[-1].append(['rule',p])
         # for i in range(pnum1,max_path_num):
         #     paths[-1].append(["nodesc",["nopath"]])

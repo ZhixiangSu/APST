@@ -30,7 +30,7 @@ parser.add_argument('--coverage_threshold', type=float, default=0.5,
                     help='coverage threshold')
 parser.add_argument('--confidence_threshold', type=float, default=0.5,
                     help='confidence threshold')
-parser.add_argument('--search_depth', type=int, default=2,
+parser.add_argument('--search_depth', type=int, default=3,
                     help='search depth')
 
 args = parser.parse_args()
@@ -112,6 +112,7 @@ def remove_self_loop(sp):
 
 
 def cal_metrics(Ap, rsm):
+    Ap=Ap.coalesce()
     tmp1 = torch.sparse.sum(rsm, dim=0)
     tcandidates = torch.sparse_coo_tensor(torch.cat([torch.zeros_like(tmp1.indices()), tmp1.indices()]),
                                           torch.ones_like(tmp1.values()), (1, len(entities2id)))
@@ -181,8 +182,16 @@ pbar=tqdm(total=len(relation_sparse_matrix.keys()), desc='Rule Generating',
                  file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET))
 with torch.no_grad():
     for r1 in relation_sparse_matrix:
-        rule_generating(relation_sparse_matrix, relation_sparse_matrix[r1], [r1],
-                        strict_logical_rules,0,thresholds)
+        for r in relation_sparse_matrix:
+            if r == r1:
+                continue
+            coverage, confidence, pcandidates = cal_metrics(relation_sparse_matrix[r1], relation_sparse_matrix[r])
+            for i, threshold in enumerate(thresholds):
+                if confidence > threshold[0] and coverage > threshold[1]:
+                    strict_logical_rules[i][r].append([[r1], [confidence, coverage]])
+        if args.search_depth != len([r1]):
+            rule_generating(relation_sparse_matrix, relation_sparse_matrix[r1], [r1],
+                            strict_logical_rules,0,thresholds)
         pbar.update(1)
 pbar.close()
 # for r in strict_logical_rules:

@@ -1,18 +1,18 @@
 set -v
-dataset="FB15k-237-subset"
+dataset="NELL-995-subset"
 suffix="_full"
 finding_mode="head"
 device="cuda:0"
 seed=42
-epochs=15
+epochs=30
 relation_prediction_lr=1e-5
 
 path_search_depth=5
 path_support_type=2
-path_support_threshold=5e-3
+path_support_threshold=1e-4
 
 text_file='GoogleWikipedia'
-text_length=256
+text_length=48
 
 rule_search_depth=2
 rule_coverage_threshold=0.5
@@ -39,4 +39,4 @@ rule_confidence_threshold=0.5
 #python path_finding_relation.py --dataset $dataset --suffix $suffix --finding_mode $finding_mode --training_mode test --npaths_ranking 3 --support_threshold $path_support_threshold --search_depth $path_search_depth --support_type $path_support_type
 
 # "relation prediction"
-python relation_prediction.py --device $device --epochs $epochs --batch_size 1 --dataset $dataset --learning_rate $relation_prediction_lr --neg_sample_num_train 5 --neg_sample_num_valid 5 --neg_sample_num_test 50 --mode $finding_mode --seed $seed --suffix $suffix --do_train --do_test --text_file $text_file --text_length $text_length
+python relation_prediction.py --device $device --epochs $epochs --batch_size 1 --dataset $dataset --learning_rate $relation_prediction_lr --neg_sample_num_train 5 --neg_sample_num_valid 5 --neg_sample_num_test 50 --mode $finding_mode --seed $seed --suffix $suffix --text_file $text_file --text_length $text_length

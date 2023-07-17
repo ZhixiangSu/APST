@@ -1,7 +1,7 @@
 set -v
-dataset="WN18RR-subset"
-suffix="_1000"
-finding_mode="tail"
+dataset="NELL-995-subset"
+suffix="_full"
+finding_mode="head"
 device="cuda:0"
 seed=42
 epochs=30
@@ -12,7 +12,7 @@ path_support_type=2
 path_support_threshold=1e-4
 
 text_file='GoogleWikipedia'
-text_length=64
+text_length=48
 
 rule_search_depth=2
 rule_coverage_threshold=0.5

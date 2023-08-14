@@ -26,6 +26,8 @@ parser.add_argument('--epochs', type=int, default=30,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=1, metavar='N',
                     help='batch size')
+parser.add_argument('--eval_metric', type=int, default=2, metavar='N',
+                    help='index of evaluation metric [MR,MRR,Hit@1,Hit@3,Hit@10]')
 parser.add_argument('--dataset', type=str, default='FB15k-237-subset',
                     help='name of the dataset')
 parser.add_argument('--path_dir', type=str, default=None,
@@ -285,7 +287,7 @@ def validate():
     valid_pbar.close()
     metrics = metrics / nb_valid_steps
     print(f"MR: {metrics[0]}, MRR: {metrics[1]}, Hit@1: {metrics[2]}, Hit@3: {metrics[3]}, Hit@10: {metrics[4]}")
-    return metrics[2]
+    return metrics[args.eval_metric]
 def test():
     ranking_pbar = tqdm(total=len(ranking_triplets),
                         position=0, leave=True,

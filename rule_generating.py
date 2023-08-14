@@ -18,7 +18,7 @@ from functools import partial
 
 
 parser = argparse.ArgumentParser(description='Path Finding for Relation Prediction')
-parser.add_argument('--dataset', type=str, default='WN18RR-subset',
+parser.add_argument('--dataset', type=str, default='FB15k-237-subset',
                     help='name of the dataset')
 parser.add_argument('--data_dir', type=str, default=None,
                     help='directory to load data')
@@ -26,12 +26,14 @@ parser.add_argument('--output_dir', type=str, default=None,
                     help='directory to store output')
 parser.add_argument('--npaths_ranking', type=int, default=3,
                     help='number of paths for each triplet')
-parser.add_argument('--coverage_threshold', type=float, default=0.5,
-                    help='coverage threshold')
-parser.add_argument('--confidence_threshold', type=float, default=0.5,
-                    help='confidence threshold')
-parser.add_argument('--search_depth', type=int, default=3,
-                    help='search depth')
+parser.add_argument('--recall_threshold', type=float, default=0.5,
+                    help='recall threshold')
+parser.add_argument('--accuracy_threshold', type=float, default=0.5,
+                    help='accuracy threshold')
+parser.add_argument('--min_search_depth', type=int, default=2,
+                    help='min search depth')
+parser.add_argument('--max_search_depth', type=int, default=2,
+                    help='max search depth')
 
 args = parser.parse_args()
 allow_flexible=False
@@ -99,7 +101,7 @@ A_all = [torch.sparse_coo_tensor(torch.empty([1, 0]), torch.empty([0, len(entiti
                                  (len(entities2id), len(entities2id))).to(device)]
 for r in relation_sparse_matrix:
     A_all[0] = A_all[0] + relation_sparse_matrix[r]
-for i in range(1,args.search_depth):
+for i in range(1,args.max_search_depth):
     A_all.append(torch.sparse.mm(A_all[-1],A_all[0])+A_all[0])
 
 
@@ -119,10 +121,10 @@ def cal_metrics(Ap, rsm):
     tmp2=torch.sparse.sum(Ap,dim=0)
     pcandidates = torch.sparse_coo_tensor(torch.cat([tmp2.indices(), torch.zeros_like(tmp2.indices())]), torch.ones_like(tmp2.values()),(len(entities2id),1))
     support = torch.sparse.mm(tcandidates,pcandidates)
-    coverage = support / torch.sparse.sum(tcandidates)
+    recall = support / torch.sparse.sum(tcandidates)
     tmp4 = torch.sparse_coo_tensor(Ap.indices(), torch.ones_like(Ap.values()), Ap.shape)
-    confidence = support / torch.sparse.sum(tmp4)
-    return coverage.item(), confidence.item(),pcandidates
+    accuracy = support / torch.sparse.sum(tmp4)
+    return recall.item(), accuracy.item(),pcandidates
 def cal_frequency(Ap,rsm,Ap_all):
     tmp1 = torch.sparse.sum(rsm, dim=0)
     hcandidates = torch.sparse_coo_tensor(torch.cat([tmp1.indices(),torch.zeros_like(tmp1.indices())]),
@@ -140,14 +142,15 @@ def rule_generating(relation_sparse_matrix, A, path, strict_logical_rules,freque
         Ap = torch.sparse.mm(A, relation_sparse_matrix[rp])
         Ap = remove_self_loop(Ap)
         if Ap._nnz() != 0 and cal_frequency(Ap,relation_sparse_matrix[rp],A_all[len(path)-1])> frequency:
-            for r in relation_sparse_matrix:
-                if r==rp:
-                    continue
-                coverage, confidence,pcandidates = cal_metrics(Ap, relation_sparse_matrix[r])
-                for i,threshold in enumerate(thresholds):
-                    if confidence>threshold[0] and coverage>threshold[1]:
-                        strict_logical_rules[i][r].append([path + [rp], [confidence, coverage]])
-            if args.search_depth != len(path + [rp]):
+            if args.min_search_depth <= len(path + [rp]):
+                for r in relation_sparse_matrix:
+                    if r==rp:
+                        continue
+                    recall, accuracy,pcandidates = cal_metrics(Ap, relation_sparse_matrix[r])
+                    for i,threshold in enumerate(thresholds):
+                        if accuracy>threshold[0] and recall>threshold[1]:
+                            strict_logical_rules[i][r].append([path + [rp], [accuracy, recall]])
+            if args.max_search_depth > len(path + [rp]):
                 rule_generating(relation_sparse_matrix, Ap, path + [rp],strict_logical_rules,frequency,thresholds)
 # def rule_matching(rsm,strict_logical_rules,thresholds):
 #     matched_rules=defaultdict(partial(defaultdict,list))
@@ -170,26 +173,27 @@ def rule_generating(relation_sparse_matrix, A, path, strict_logical_rules,freque
 #     pbar.close()
 #     return matched_rules
 
-# thresholds=[[args.coverage_threshold,args.confidence_threshold]]
-thresholds=[[args.confidence_threshold,args.coverage_threshold]]
+# thresholds=[[args.recall_threshold,args.accuracy_threshold]]
+thresholds=[[args.accuracy_threshold,args.recall_threshold]]
 
 strict_logical_rules = [defaultdict(list) for i in range(len(thresholds))]
-# rules_confidence=defaultdict(list)
-# rules_coverage= defaultdict(list)
+# rules_accuracy=defaultdict(list)
+# rules_recall= defaultdict(list)
 # rules_frequency=defaultdict(list)
 pbar=tqdm(total=len(relation_sparse_matrix.keys()), desc='Rule Generating',
                  position=0, leave=True,
                  file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET))
 with torch.no_grad():
     for r1 in relation_sparse_matrix:
-        for r in relation_sparse_matrix:
-            if r == r1:
-                continue
-            coverage, confidence, pcandidates = cal_metrics(relation_sparse_matrix[r1], relation_sparse_matrix[r])
-            for i, threshold in enumerate(thresholds):
-                if confidence > threshold[0] and coverage > threshold[1]:
-                    strict_logical_rules[i][r].append([[r1], [confidence, coverage]])
-        if args.search_depth != len([r1]):
+        if args.min_search_depth <= len([r1]):
+            for r in relation_sparse_matrix:
+                if r == r1:
+                    continue
+                recall, accuracy, pcandidates = cal_metrics(relation_sparse_matrix[r1], relation_sparse_matrix[r])
+                for i, threshold in enumerate(thresholds):
+                    if accuracy > threshold[0] and recall > threshold[1]:
+                        strict_logical_rules[i][r].append([[r1], [accuracy, recall]])
+        if args.max_search_depth > len([r1]):
             rule_generating(relation_sparse_matrix, relation_sparse_matrix[r1], [r1],
                             strict_logical_rules,0,thresholds)
         pbar.update(1)
@@ -210,7 +214,7 @@ for i in range(len(thresholds)):
 
 
 
-# with open(os.path.join(output_dir,f"rules_coverage.pkl"), "wb") as f:
-#     pickle.dump(rules_coverage,f)
-# with open(os.path.join(output_dir,f"rules_confidence.pkl"), "wb") as f:
-#     pickle.dump(rules_confidence,f)
+# with open(os.path.join(output_dir,f"rules_recall.pkl"), "wb") as f:
+#     pickle.dump(rules_recall,f)
+# with open(os.path.join(output_dir,f"rules_accuracy.pkl"), "wb") as f:
+#     pickle.dump(rules_accuracy,f)

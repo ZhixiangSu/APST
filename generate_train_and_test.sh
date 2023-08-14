@@ -14,9 +14,11 @@ path_support_threshold=1e-4
 text_file='GoogleWikipedia'
 text_length=48
 
-rule_search_depth=2
-rule_coverage_threshold=0.5
-rule_confidence_threshold=0.5
+min_search_depth=1
+max_search_depth=2
+
+rule_recall_threshold=0.5
+rule_accuracy_threshold=0.5
 
 
 
@@ -27,7 +29,7 @@ python neg_sampling.py --dataset $dataset --suffix $suffix --finding_mode $findi
 cp data/data/${dataset}/ranking_${finding_mode}.txt data/relation_prediction_path_data/${dataset}/ranking_${finding_mode}${suffix}/ranking_test.txt
 
 # "rule generating"
-python rule_generating.py --dataset $dataset --npaths_ranking 3 --coverage_threshold $rule_coverage_threshold --confidence_threshold $rule_confidence_threshold --search_depth $rule_search_depth
+python rule_generating.py --dataset $dataset --npaths_ranking 3 --recall_threshold $rule_recall_threshold --accuracy_threshold $rule_accuracy_threshold --max_search_depth $max_search_depth --min_search_depth $min_search_depth
 
 # "rule finding"
 python rule_finding.py --dataset $dataset --suffix $suffix --finding_mode $finding_mode --training_mode train --neg_sample_num 5

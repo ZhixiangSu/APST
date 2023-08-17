@@ -32,7 +32,7 @@ Run the following command to initiate the process:
 
 ```shell
 ./generate_train_and_test.sh
-
+```
 ## Implementation Details
 
 ### Detailed Description Retrieval

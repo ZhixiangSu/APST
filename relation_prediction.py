@@ -230,7 +230,6 @@ def train():
         training_pbar.close()
         scheduler.step()
         print(f"Learning rate={optimizer.param_groups[0]['lr']}\nTraining loss={tr_loss / nb_tr_steps:.4f}")
-        test()
         if epoch % 3 == 0:
             valid_acc=validate()
             if valid_acc > best_val_acc:
@@ -366,7 +365,6 @@ def test():
 
 if args.no_train is False:
     try:
-        test()
         train()
     except KeyboardInterrupt:
         print("Receive keyboard interrupt, start testing:")

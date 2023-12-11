@@ -195,15 +195,6 @@ def train():
         nb_tr_steps = 0
         for step, batch in enumerate(train_data_loader):
             sentence1, sentence2, targets = batch
-            # sentence1 = [["; ".join([all_dict[er] for er in st]) + " [SEP]" for st in st1] for st1 in
-            #                      sentence1]
-            # sentence2 = [[["; ".join([all_dict[er] for er in s]) + " [SEP]" for s in st] for st in st2] for st2 in
-            #                   sentence2]
-            # sentence1 = [[f'{all_dict[st1[1]]} ; {all_dict[st1[0]]} ; {all_dict[st1[2]]} [SEP]' for st1 in st2] for st2 in
-            #              sentence1]
-            # sentence2 = [
-            #     [[f'{"; ".join([all_dict[r] for r in st[1]])} ; {all_dict[st[0]]} ; {all_dict[st[2]]} [SEP]' for st in st1]
-            #      for st1 in st2] for st2 in sentence2]
 
             targets = torch.tensor(targets).to(device)
             optimizer.zero_grad()
@@ -213,10 +204,6 @@ def train():
                     embed1 = model(s1).unsqueeze(1)
                     embed2 = torch.stack([model(s) for s in s2])
                     sim = torch.cosine_similarity(embed1, embed2, dim=2)
-                    # sim = torch.stack(
-                    #     [torch.max(torch.stack([torch.cosine_similarity(e1, e2, dim=0) for e2 in emb2])) for
-                    #      e1, emb2 in
-                    #      zip(embed1, embed2)])
                     outputs.append(sim)
                 outputs = torch.stack(outputs)
                 loss = criterion(outputs, targets)
@@ -250,20 +237,6 @@ def validate():
         sentence1, sentence2, targets,pos_tails = batch
         pos_mask = [[s[2] in pt and i != tgt for i, s in enumerate(st1)] for st1, pt, tgt in
                     zip(sentence1, pos_tails, targets)]
-        # sentence1 = [["; ".join([all_dict[er] for er in st]) + " [SEP]" for st in st1] for st1 in
-        #              sentence1]
-        # sentence2 = [[["; ".join([all_dict[er] for er in s]) + " [SEP]" for s in st] for st in st2] for st2 in
-        #              sentence2]
-
-        # sentence1 = [
-        #     [
-        #         f'{text["entity"][st1[0]]}: {text["entitylong"][st1[0]]} [SEP] {text["relation"][st1[1]]} [SEP] {text["entity"][st1[2]]}: {text["entitylong"][st1[2]]} [SEP]'
-        #         for st1 in st2] for st2 in sentence1]
-        # sentence2 = [[[
-        #                   f'{text["entity"][s[0]]}: {text["entitylong"][s[0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in s[1:-1]])} [SEP] {text["entity"][s[-1]]}:{text["entitylong"][s[-1]]} [SEP]'
-        #                   for s in st] for
-        #               st in st2] for st2 in sentence2]
-
         targets = torch.tensor(targets).to(device)
         optimizer.zero_grad()
         outputs = []
@@ -274,10 +247,6 @@ def validate():
                     embed2 = torch.stack([model(s) for s in s2])
 
                     sim,_ = torch.max(torch.cosine_similarity(embed1,embed2,dim=2),dim=1)
-                    # sim = torch.stack(
-                    #     [torch.max(torch.stack([torch.cosine_similarity(e1, e2, dim=0) for e2 in emb2])) for
-                    #      e1, emb2 in
-                    #      zip(embed1, embed2)])
                     outputs.append(sim)
                 outputs = torch.stack(outputs)
         metrics += cal_metrics(outputs.cpu().numpy(), targets.cpu().numpy(),pos_mask)
@@ -299,21 +268,6 @@ def test():
     for batch in list(ranking_data_loader):
         sentence1, sentence2, targets,pos_tails = batch
         pos_mask=[[s[2] in pt and i!=tgt for i,s in enumerate(st1)] for st1,pt,tgt in zip(sentence1,pos_tails,targets)]
-        # sentence1 = [["; ".join([all_dict[er] for er in st]) + " [SEP]" for st in st1] for st1 in
-        #              sentence1]
-        # sentence2 = [[["; ".join([all_dict[er] for er in s]) + " [SEP]" for s in st] for st in st2] for st2 in
-        #              sentence2]
-        # sentence1 = [[f'{all_dict[st1[1]]} ; {all_dict[st1[0]]} ; {all_dict[st1[2]]} [SEP]' for st1 in st2] for st2 in
-        #              sentence1]
-        # sentence2 = [
-        #     [[f'{"; ".join([all_dict[r] for r in st[1]])} ; {all_dict[st[0]]} ; {all_dict[st[2]]} [SEP]' for st in st1]
-        #      for st1 in st2] for st2 in sentence2]
-
-        # sentence1 = [
-        #     [f'{text["entity"][st1[0]]}: {text["entitylong"][st1[0]]} [SEP] {text["relation"][st1[1]]} [SEP] {text["entity"][st1[2]]}: {text["entitylong"][st1[2]]} [SEP]'
-        #      for st1 in st2] for st2 in sentence1]
-        # sentence2 = [[[f'{text["entity"][s[0]]}: {text["entitylong"][s[0]]} [SEP] {" [SEP] ".join([all_dict[er] for er in s[1:-1]])} [SEP] {text["entity"][s[-1]]}:{text["entitylong"][s[-1]]} [SEP]' for s in st] for
-        #               st in st2] for st2 in sentence2]
 
         targets = torch.tensor(targets).to(device)
         optimizer.zero_grad()
@@ -324,10 +278,6 @@ def test():
                     embed1 = model(s1).unsqueeze(1)
                     embed2 = torch.stack([model(s) for s in s2])
                     sim,_ = torch.max(torch.cosine_similarity(embed1,embed2,dim=2),dim=1)
-                    # sim = torch.stack(
-                    #     [torch.max(torch.stack([torch.cosine_similarity(e1, e2, dim=0) for e2 in emb2])) for
-                    #      e1, emb2 in
-                    #      zip(embed1, embed2)])
                     outputs.append(sim)
                 outputs = torch.stack(outputs)
         metrics+=cal_metrics(outputs.cpu().numpy(),targets.cpu().numpy(),pos_mask)

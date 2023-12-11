@@ -152,34 +152,11 @@ def rule_generating(relation_sparse_matrix, A, path, strict_logical_rules,freque
                             strict_logical_rules[i][r].append([path + [rp], [accuracy, recall]])
             if args.max_search_depth > len(path + [rp]):
                 rule_generating(relation_sparse_matrix, Ap, path + [rp],strict_logical_rules,frequency,thresholds)
-# def rule_matching(rsm,strict_logical_rules,thresholds):
-#     matched_rules=defaultdict(partial(defaultdict,list))
-#     pbar=tqdm(total=len(rsm.keys()), desc='Rule Matching',
-#                      position=0, leave=True,
-#                      file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET))
-#     for r in rsm:
-#         for path1,pcandidates1 in strict_logical_rules[r]:
-#             for path2,pcandidates2 in strict_logical_rules[inverse_relation(r)]:
-#                 tmp1=torch.sparse.mm(pcandidates2.T,rsm[r])
-#                 tmp2=torch.sparse.mm(rsm[r],pcandidates1)
-#                 match_num=torch.sparse.mm(tmp1,pcandidates1)
-#                 match_rate1=match_num/torch.sparse.sum(tmp1)
-#                 match_rate2 = match_num / torch.sparse.sum(tmp2)
-#                 if match_rate1.item()>thresholds:
-#                     matched_rules[r][tuple(path2)].append(path1)
-#                 if match_rate2.item()>thresholds:
-#                     matched_rules[inverse_relation(r)][tuple(path1)].append(path2)
-#         pbar.update(1)
-#     pbar.close()
-#     return matched_rules
 
-# thresholds=[[args.recall_threshold,args.accuracy_threshold]]
 thresholds=[[args.accuracy_threshold,args.recall_threshold]]
 
 strict_logical_rules = [defaultdict(list) for i in range(len(thresholds))]
-# rules_accuracy=defaultdict(list)
-# rules_recall= defaultdict(list)
-# rules_frequency=defaultdict(list)
+
 pbar=tqdm(total=len(relation_sparse_matrix.keys()), desc='Rule Generating',
                  position=0, leave=True,
                  file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET))
@@ -198,23 +175,9 @@ with torch.no_grad():
                             strict_logical_rules,0,thresholds)
         pbar.update(1)
 pbar.close()
-# for r in strict_logical_rules:
-#     strict_logical_rules[r]=sorted(strict_logical_rules[r],key=lambda x:(-x[1][0],-x[1][1]))
-# strict_logical_rules=pickle.load(open(os.path.join(output_dir,f"strict_logical_rules.pkl"),'rb'))
-# matched_rules=rule_matching(relation_sparse_matrix,strict_logical_rules,0.9)
+
 
 for i in range(len(thresholds)):
     with open(os.path.join(output_dir,f"strict_logical_rules{i}.pkl"), "wb") as f:
         pickle.dump(strict_logical_rules[i],f)
 
-# with open(os.path.join(output_dir,f"flexible_logical_rules.pkl"), "wb") as f:
-#     pickle.dump(flexible_logical_rules,f)
-# with open(os.path.join(output_dir,f"matched_rules.pkl"), "wb") as f:
-#     pickle.dump(matched_rules,f)
-
-
-
-# with open(os.path.join(output_dir,f"rules_recall.pkl"), "wb") as f:
-#     pickle.dump(rules_recall,f)
-# with open(os.path.join(output_dir,f"rules_accuracy.pkl"), "wb") as f:
-#     pickle.dump(rules_accuracy,f)

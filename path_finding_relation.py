@@ -9,32 +9,6 @@ import os
 import argparse
 import copy
 
-# parser = argparse.ArgumentParser(description='Path Finding for Relation Prediction')
-# parser.add_argument('--dataset', type=str, default='FB15k-237-subset',
-#                     help='name of the dataset')
-# parser.add_argument('--suffix', type=str, default='_full',
-#                     help='suffix of the train file name')
-# parser.add_argument('--finding_mode', type=str, default='tail',
-#                     help='whether head, relation or tail is fixed')
-# parser.add_argument('--training_mode', type=str, default='interpret',
-#                     help='whether train, valid, test or interpret')
-# parser.add_argument('--data_dir', type=str, default=None,
-#                     help='directory to load data')
-# parser.add_argument('--output_dir', type=str, default=None,
-#                     help='directory to store output')
-# parser.add_argument('--train_dataset', type=str, default=None,
-#                     help='dataset to load train graph')
-# parser.add_argument('--ranking_dataset', type=str, default=None,
-#                     help='dataset to load ranking files')
-# parser.add_argument('--npaths_ranking', type=int, default=100,
-#                     help='number of paths for each triplet')
-# parser.add_argument('--support_threshold', type=float, default=0,
-#                     help='threshold of path filtering function')
-# parser.add_argument('--support_type', type=int, default=2,
-#                     help='choice of path filtering function. 0: none, 1: relation path coverage 2: relation path confidence  ')
-# parser.add_argument('--search_depth', type=int, default=8,
-#                     help='search depth')
-
 
 parser = argparse.ArgumentParser(description='Path Finding for Relation Prediction')
 parser.add_argument('--dataset', type=str, default='FB15k-237-subset',

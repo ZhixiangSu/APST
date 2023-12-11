@@ -39,7 +39,6 @@ args = parser.parse_args()
 allow_flexible=False
 max_path_num=3
 min_group_rules_num=max_path_num*3
-flexible_rules_num=200
 rule_dir=os.path.join('data/relation_prediction_path_data/', args.dataset)
 
 
@@ -139,9 +138,6 @@ def get_head_entities(Ap,id2entities,tail):
     return entities
 
 strict_logical_rules = pickle.load(open(os.path.join(rule_dir,f"strict_logical_rules0.pkl"),'rb'))
-# matched_rules=pickle.load(open(os.path.join(rule_dir,f"matched_rules.pkl"),'rb'))
-# if allow_flexible:
-#     flexible_logical_rules = pickle.load(open(os.path.join(rule_dir,f"flexible_logical_rules.pkl"),'rb'))
 ranking_rules=[]
 ranking_head_entities=[]
 def path_finding(path,pos_removed_rsm,triplets,ranking_rules,ranking_head_entities,mode):
@@ -156,28 +152,6 @@ def path_finding(path,pos_removed_rsm,triplets,ranking_rules,ranking_head_entiti
         if triplet[2] in entity_candidates and len(ranking_rules[-1][ti])<max_path_num:
             ranking_rules[-1][ti].append([mode]+path)
             ranking_head_entities[-1][ti].append(path_head_entities[triplet[2]])
-# def path_finding2(pmatched,pos_removed_rsm,triplets,ranking_rules,ranking_head_entities,mode):
-#     for path1 in pmatched.keys():
-#         Ap1 = pos_removed_rsm[path1[0]]
-#         for pi in range(1, len(path1)):
-#             Ap1 = torch.sparse.mm(Ap1, pos_removed_rsm[path1[pi]])
-#         tcandidates1 = torch.sparse.sum(Ap1, dim=0)
-#         entity_candidates1 = set(
-#             id2entities[tcandidates1.indices()[0][i].item()] for i in range(tcandidates1.indices().shape[1]))
-#         path_head_entities = {e: get_head_entities(Ap1, id2entities, entities2id[e]) for e in entity_candidates1}
-#         if triplets[0][0] in entity_candidates1:
-#             for path2 in pmatched[path1]:
-#                 Ap2 = pos_removed_rsm[path2[0]]
-#                 for pi in range(1, len(path2)):
-#                     Ap2 = torch.sparse.mm(Ap2, pos_removed_rsm[path2[pi]])
-#                 tcandidates2 = torch.sparse.sum(Ap2, dim=0)
-#                 entity_candidates2 = set(
-#                     id2entities[tcandidates2.indices()[0][i].item()] for i in range(tcandidates2.indices().shape[1]))
-#                 path_head_entities2 = {e: get_head_entities(Ap2, id2entities, entities2id[e]) for e in entity_candidates2}
-#                 for ti, triplet in enumerate(triplets):
-#                     if triplet[2] in entity_candidates2:
-#                         ranking_rules[-1][ti].append([mode] + path2)
-#                         ranking_head_entities[-1][ti].append(path_head_entities2[triplet[2]])
 
 pbar=tqdm(total=len(ranking_triplets), desc='Rule Finding',
                  position=0, leave=True,
@@ -190,22 +164,17 @@ for triplets in ranking_triplets:
     pos_removed_rsm=copy.deepcopy(relation_sparse_matrix)
     if args.training_mode=='train':
         pos_removed_rsm=remove_pos_triplet(pos,pos_removed_rsm)
-    # path_finding2(matched_rules[pos[1]],pos_removed_rsm,triplets,ranking_rules,ranking_head_entities,'strict')
+
     for path,_ in strict_logical_rules[pos[1]]:
         if sum(len(rules) for rules in ranking_rules[-1])>=min_group_rules_num:
             break
         path_finding(path,pos_removed_rsm,triplets,ranking_rules,ranking_head_entities,'strict')
-    # if allow_flexible and sum(len(rules) for rules in ranking_rules[-1])<min_group_rules_num:
-    #     for path in flexible_logical_rules[pos[1]][:flexible_rules_num]:
-    #         path_finding(path, pos_removed_rsm, triplets, ranking_rules, ranking_head_entities, 'flexible')
-    pbar.update(1)
+        pbar.update(1)
 pbar.close()
 with open(os.path.join(output_dir,f"relation_rules_{args.training_mode}.txt"), "w", encoding='utf-8') as f1,\
         open(os.path.join(output_dir,f"rules_heads_{args.training_mode}.txt"), "w", encoding='utf-8') as f2:
     for i in range(len(ranking_rules)):
         for path_group,head_entities in zip(ranking_rules[i],ranking_head_entities[i]):
-            # if len(path_group)>args.nrules_ranking:
-            #     path_group,head_entities=zip(*random.sample(list(zip(path_group,head_entities)),args.npaths_ranking))
             f1.write(str(len(path_group)) + "\n")
             f2.write(str(len(head_entities)) + "\n")
             for path,heads in zip(path_group,head_entities):

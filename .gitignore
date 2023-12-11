@@ -1,3 +1,4 @@
-/save/
 /data/relation_prediction_path_data/
 /output/
+/save/clipped/
+/save/clip.py

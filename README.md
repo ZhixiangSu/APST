@@ -49,7 +49,7 @@ The entire process of AP extraction and filtering is implemented in the followin
 
 ### Sentence Formation, AP Encoding, and APST Prediction
 
-The Sentence formation, AP encoding, and APST prediction process are implemented based on the sentence transformer model from [huggingface](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). This model is used in the file `relation_prediction.py`. It also follows the state-of-the-art relation prediction model [KRST](https://github.com/ZhixiangSu/KRST).
+The Sentence formation, AP encoding, and APST prediction process are implemented based on the sentence transformer model from [huggingface](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). This model is used in the file `relation_prediction.py`. It also follows our previous state-of-the-art relation prediction model [KRST](https://github.com/ZhixiangSu/KRST).
 
 ## Citations
 

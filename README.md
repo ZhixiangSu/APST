@@ -1,5 +1,7 @@
 # Anchoring Path for Inductive Relation Prediction in Knowledge Graphs
 
+![Architecture](architecture.png)
+
 Welcome to the repository for our paper accepted by AAAI 2024 titled **"Anchoring Path for Inductive Relation Prediction in Knowledge Graphs"**. Our paper introduces APST, a novel path-based method that leverages Sentence Transformer to enhance inductive relation prediction. APST is designed to retrieve detailed descriptions, capture supporting evidence through Anchoring Paths (APs), and integrate both Anchoring Paths and Closed Paths (CPs) for comprehensive predictions and insightful explanations.
 
 ## Requirements

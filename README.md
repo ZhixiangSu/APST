@@ -55,7 +55,7 @@ The Sentence formation, AP encoding, and APST prediction process are implemented
 
 ## Citations
 
-Currently not available.
+Please refer to citations [here](https://arxiv.org/abs/2312.13596).
 
 ## Q&A
 
